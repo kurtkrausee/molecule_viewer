@@ -1,0 +1,61 @@
+Erstelle eine moderne Single-Page-Webanwendung index.html – einen interaktiven 3D-Molekül-Viewer. Nutze 3Dmol.js via CDN (https://3dmol.org/build/3Dmol-min.js). Kein externes Framework, kein Build-Tool, alles in einer einzigen HTML-Datei.
+
+Design: Dark Mode
+Dunkles Theme (#0d1117 Hintergrund, #161b22 Sidebar, #58a6ff Akzentfarbe). Header mit Titel „Interaktiver Molekül-Viewer" und Badge-Elementen. Rechte Sidebar (222 px), Viewer nimmt den restlichen Platz ein (position: absolute; inset: 0). Footer mit Quellenhinweis.
+
+Moleküle (umschaltbar per Dropdown oder Buttons in der Sidebar):
+Drei Moleküle als eingebettete SDF-Strings – kein Datei-Zugriff nötig:
+
+H₂O (Wasser) – gewinkelt, 104.5°, O–H = 0.96 Å, TIP3P-Partialladungen: O = −0.834, H = +0.417
+CH₄ (Methan) – Tetraeder-Geometrie, C–H = 1.091 Å, kein Dipol, Partialladungen: C = −0.266, H = +0.053 (CHARMM27); ESP-Oberfläche soll weitgehend neutral/grünlich-weiß erscheinen
+HF (Fluorwasserstoff) – linear, H–F = 0.917 Å, stark polar, Partialladungen: F = −0.272, H = +0.272 (skaliert auf ±0.45 für gute Visualisierung); ESP-Oberfläche soll klaren Rot-Blau-Kontrast zeigen
+Beim Molekülwechsel: Viewer komplett zurücksetzen (removeAllModels, removeAllSurfaces), neues Molekül laden, ESP neu berechnen, zoomTo() aufrufen.
+
+3D-Darstellung:
+Vier umschaltbare Stile per Buttons (alle per addEventListener verdrahtet):
+
+Kugel-Stäbchen (Standard): stick radius 0.15 + sphere scale 0.35, Jmol-Farbschema
+Nur Stäbchen: stick radius 0.18
+Nur Kugeln: sphere scale 0.5
+Drahtmodell: line linewidth 3
+Aktiver Button bekommt CSS-Klasse aktiv (blaue Hervorhebung).
+
+ESP-Oberfläche (elektrostatisches Potential):
+VDW-Oberfläche via viewer.addSurface($3Dmol.SurfaceType.VDW, { voldata, volscheme }).
+Gaussian-Cube-Volumen zur Laufzeit berechnen (kein externer API-Call):
+
+ESP(r) = Σᵢ qᵢ · exp(−0.15 · |r − rᵢ|²) (Einheit: Bohr, α = 0.15 Bohr⁻²)
+
+Gitter: 22×22×16 Punkte, ±4.5 Å in x/y, ±3.0 Å in z.
+Farbschema: new $3Dmol.Gradient.RWB(min, max) – Rot = negativ/elektronenreich, Blau = positiv/elektroarm.
+RWB-Grenzen je Molekül anpassen:
+
+H₂O: RWB(−0.22, 0.09)
+CH₄: RWB(−0.08, 0.08) (symmetrisch, kaum Kontrast gewünscht)
+HF: RWB(−0.18, 0.12)
+Toggle (Checkbox) zum Ein-/Ausblenden. Opazitäts-Slider (0.05–1.00, Standard 0.70), der live aktualisiert. Farbskala Rot→Weiß→Blau als CSS-Gradient unter dem Slider.
+
+Elektronendichte-Isoflächen:
+Zweite Gauß-Cube-Berechnung: ρ(r) = Σᵢ Zᵢ · exp(−αᵢ · |r − rᵢ|²) (αO = 0.80, αH/αF = 0.45, αC = 0.60).
+Zwei Isoflächen via viewer.addIsosurface():
+
+η = 0.10 → blau (#58a6ff), Opazität 0.18 (äußere Hülle)
+η = 0.55 → amber (#e3b341), Opazität 0.45 (innerer Kern)
+Eigener Toggle zum Ein-/Ausblenden. Standardmäßig ausgeschaltet.
+
+Sidebar – Molekülinformationen (dynamisch je Molekül):
+Zeige folgende Werte, die sich beim Molekülwechsel aktualisieren:
+
+Formel, Anzahl Atome, Anzahl Bindungen, Geometrie, Bindungswinkel, Bindungslänge
+Elektronegativitäten jedes Atoms (Pauling-Skala): H = 2.20, C = 2.55, O = 3.44, F = 3.98
+Maximale EN-Differenz im Molekül (ΔEN), z.B. H₂O: |3.44 − 2.20| = 1.24
+Dipol-Einschätzung: Text-Badge „polar" (rot) wenn ΔEN > 0.4 und Geometrie asymmetrisch, „unpolar" (grün) bei CH₄
+Event-Listener – alle UI-Elemente müssen funktionieren:
+
+Molekül-Wechsel → kompletter Reset + Neuaufbau
+4 Stil-Buttons → setStyle() + render()
+ESP-Toggle → removeAllSurfaces() + ggf. neu aufbauen
+Dichte-Toggle → Isoflächen ein-/ausblenden
+Opazitäts-Slider → live oberflaechenAktualisieren() + Zahlenwert aktualisieren
+JavaScript komplett auf Deutsch kommentieren:
+Alle Variablen, Funktionen und Kommentare auf Deutsch. Jeden Abschnitt erklären (Formeln, Cube-Format-Aufbau, API-Parameter, warum α = 0.15).

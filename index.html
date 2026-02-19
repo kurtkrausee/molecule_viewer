@@ -445,13 +445,17 @@ $$$$`;
   //
   //    ESP(r) = Σᵢ  qᵢ · exp(−α · |r − rᵢ|²)
   //
-  //  α = 0.70 (Bohr⁻²) liefert ein visuell gut lesbares Ergebnis:
-  //    • Nahe O (qₒ = −0.834): stark negativ → roter Bereich der Oberfläche
-  //    • Nahe H (qₕ = +0.417): leicht positiv → blauer Bereich
-  //    • Fernfeld: → 0                        → weißer Übergangsbereich
+  //  Warum α = 0.15 Bohr⁻²?
+  //  Die VDW-Oberfläche liegt ca. 2.5–3.0 Bohr von den Atomkernen entfernt.
+  //  Bei r² ≈ 8 gilt: exp(−0.15 · 8) ≈ 0.30 → noch ~30 % Signal an der Fläche.
+  //  Mit α = 0.70 wäre exp(−0.70 · 8) ≈ 0.004 → nahezu null → weiße Fläche!
   //
-  //  Diese Verteilung erklärt, warum Wasser ein polar-gewinkeltes Molekül
-  //  mit einem negativen Dipol-Ende (O) und zwei positiven Enden (H) ist.
+  //  Tatsächliche ESP-Werte auf der VDW-Oberfläche (α = 0.15):
+  //    • O-Seite : O dominiert (q = −0.834) → ca. −0.20  → roter Bereich
+  //    • H-Seite : H-Nähe überwiegt (q = +0.417) → ca. +0.07 → blauer Bereich
+  //
+  //  RWB(-0.22, 0.09): deckt diesen Wertebereich vollständig ab, sodass
+  //  Rot und Blau klar sichtbar sind statt alles Weiß.
   // ═══════════════════════════════════════════════════════════════════════════
   function buildESPKubus() {
     const werte = new Float64Array(NX * NY * NZ);
@@ -465,7 +469,8 @@ $$$$`;
           let esp = 0;
           for (const a of ATOME_BOHR) {
             const r2 = (cx - a.x) ** 2 + (cy - a.y) ** 2 + (cz - a.z) ** 2;
-            esp += a.q * Math.exp(-0.7 * r2); // Gauß-Glättung mit α = 0.70
+            // α = 0.15 Bohr⁻²: breit genug, damit die Werte die VDW-Fläche erreichen
+            esp += a.q * Math.exp(-0.15 * r2);
           }
           werte[idx++] = esp;
         }
@@ -600,7 +605,9 @@ $$$$`;
         {
           opacity:   opazitaet,
           voldata:   espVolDaten,
-          volscheme: new $3Dmol.Gradient.RWB(-0.40, 0.20),
+          // RWB(min, max): min-Wert → Rot, ~0 → Weiß, max-Wert → Blau
+          // Bereich passend zu α=0.15: O-Seite ≈ −0.20, H-Seite ≈ +0.07
+          volscheme: new $3Dmol.Gradient.RWB(-0.22, 0.09),
         }
       );
     }

@@ -1,18 +1,32 @@
 <!DOCTYPE html>
 <html lang="de">
+<!--
+  Interaktiver Molekül-Viewer – Wasser (H₂O)
+  Bibliothek : 3Dmol.js (CDN)
+  Oberfläche : VDW-Fläche, eingefärbt nach elektrostatischem Potential (ESP)
+  Modell     : Kugel-Stäbchen, Stäbchen, Kugeln, Drahtmodell (per Button umschaltbar)
+  ESP        : Gauß-geglättetes Potential aus TIP3P-Partialladungen,
+               Roter Bereich = elektronenreich (O), Blauer Bereich = elektroarm (H)
+-->
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Interaktiver Molekül-Viewer</title>
   <script src="https://3dmol.org/build/3Dmol-min.js"></script>
   <style>
+    /* ─── CSS-Variablen für das dunkle Dark-Mode-Design ─────────────────── */
     :root {
-      --bg:      #0d1117;
-      --surface: #161b22;
-      --border:  #30363d;
-      --accent:  #58a6ff;
-      --text:    #e6edf3;
-      --muted:   #8b949e;
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --border:   #30363d;
+      --accent:   #58a6ff;
+      --red:      #ff6b6b;
+      --green:    #56d364;
+      --amber:    #e3b341;
+      --text:     #e6edf3;
+      --muted:    #8b949e;
+      --btn-h:    #21262d;
+      --radius:   8px;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -27,111 +41,177 @@
       overflow: hidden;
     }
 
-    /* ── Header ─────────────────────────────────────────── */
+    /* ─── Header ──────────────────────────────────────────────────────────── */
     header {
       display: flex;
       align-items: center;
       gap: 0.75rem;
-      padding: 0.85rem 1.5rem;
+      padding: 0.7rem 1.4rem;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
-
     header h1 {
-      font-size: 1.25rem;
+      font-size: 1.15rem;
       font-weight: 700;
       color: var(--accent);
       letter-spacing: 0.02em;
     }
-
     .badge {
-      background: rgba(88,166,255,0.12);
+      background: rgba(88,166,255,0.10);
       color: var(--accent);
-      border: 1px solid rgba(88,166,255,0.3);
+      border: 1px solid rgba(88,166,255,0.25);
       border-radius: 20px;
-      padding: 0.15rem 0.6rem;
-      font-size: 0.72rem;
+      padding: 0.12rem 0.55rem;
+      font-size: 0.7rem;
       font-weight: 500;
     }
+    .badge.red { background:rgba(255,107,107,0.12); color:var(--red);   border-color:rgba(255,107,107,0.3); }
+    .badge.grn { background:rgba(86,211,100,0.12);  color:var(--green); border-color:rgba(86,211,100,0.3);  }
 
-    /* ── Main area ───────────────────────────────────────── */
-    .main {
-      flex: 1;
-      display: flex;
-      min-height: 0;
-    }
+    /* ─── Hauptlayout ─────────────────────────────────────────────────────── */
+    .main { flex: 1; display: flex; min-height: 0; }
 
-    #viewer-wrap {
-      flex: 1;
-      position: relative;
-      min-width: 0;
-    }
+    /* ─── 3D-Viewer ────────────────────────────────────────────────────────── */
+    #viewer-wrap { flex: 1; position: relative; min-width: 0; }
+    #viewer      { position: absolute; inset: 0; }
 
-    #viewer {
-      position: absolute;
-      inset: 0;
-    }
-
-    /* ── Sidebar ─────────────────────────────────────────── */
+    /* ─── Sidebar ─────────────────────────────────────────────────────────── */
     aside {
-      width: 210px;
+      width: 222px;
       flex-shrink: 0;
       background: var(--surface);
       border-left: 1px solid var(--border);
-      padding: 1rem;
+      padding: 0.85rem;
       display: flex;
       flex-direction: column;
-      gap: 0.85rem;
+      gap: 0.7rem;
       overflow-y: auto;
     }
-
     .card {
       background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0.85rem;
+      border-radius: var(--radius);
+      padding: 0.75rem;
     }
-
     .card-title {
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       text-transform: uppercase;
       letter-spacing: 0.1em;
       color: var(--muted);
-      margin-bottom: 0.6rem;
+      margin-bottom: 0.55rem;
     }
 
+    /* ─── Stil-Buttons ────────────────────────────────────────────────────── */
+    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.3rem;
+      padding: 0.42rem 0.4rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--btn-h);
+      color: var(--muted);
+      font-size: 0.71rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .btn:hover  { background: #2d333b; color: var(--text); }
+    .btn.aktiv  {
+      background: rgba(88,166,255,0.18);
+      color: var(--accent);
+      border-color: rgba(88,166,255,0.5);
+    }
+
+    /* ─── Toggle-Schalter ─────────────────────────────────────────────────── */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.45rem;
+      cursor: pointer;
+    }
+    .toggle-label { font-size: 0.77rem; }
+    .toggle { position: relative; width: 34px; height: 18px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider-t {
+      position: absolute;
+      inset: 0;
+      border-radius: 18px;
+      background: #30363d;
+      transition: background 0.2s;
+    }
+    .slider-t::before {
+      content: '';
+      position: absolute;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      left: 3px; top: 3px;
+      transition: transform 0.2s;
+    }
+    .toggle input:checked + .slider-t.rot { background: var(--red);   }
+    .toggle input:checked + .slider-t.grn { background: var(--green); }
+    .toggle input:checked + .slider-t::before { transform: translateX(16px); }
+
+    /* ─── Opazitäts-Slider ────────────────────────────────────────────────── */
+    .slider-wrap { margin-top: 0.45rem; }
+    .slider-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.71rem;
+      color: var(--muted);
+      margin-bottom: 0.22rem;
+    }
+    .slider-row span:last-child { color: var(--text); font-weight: 600; }
+    input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+
+    /* ─── Eigenschafts-Zeilen ─────────────────────────────────────────────── */
     .prop {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 0.3rem;
-      font-size: 0.78rem;
+      margin-bottom: 0.28rem;
+      font-size: 0.75rem;
     }
     .prop .lbl { color: var(--muted); }
     .prop .val { color: var(--text); font-weight: 500; }
 
-    .legend-row {
+    /* ─── ESP-Farbskala ───────────────────────────────────────────────────── */
+    .esp-skala {
+      width: 100%;
+      height: 12px;
+      border-radius: 4px;
+      background: linear-gradient(to right, #e84040, #ffffff, #3a8fea);
+      margin: 0.5rem 0 0.25rem;
+      border: 1px solid var(--border);
+    }
+    .esp-labels {
       display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.78rem;
-      margin-bottom: 0.4rem;
-      line-height: 1.3;
-    }
-    .dot {
-      width: 11px; height: 11px;
-      border-radius: 50%;
-      flex-shrink: 0;
+      justify-content: space-between;
+      font-size: 0.62rem;
+      color: var(--muted);
     }
 
-    .hint { font-size: 0.73rem; color: var(--muted); line-height: 1.6; }
+    /* ─── Legende ─────────────────────────────────────────────────────────── */
+    .legend-row {
+      display: flex; align-items: center; gap: 0.45rem;
+      font-size: 0.75rem; margin-bottom: 0.32rem; line-height: 1.3;
+    }
+    .dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
 
-    /* ── Footer ─────────────────────────────────────────── */
+    /* ─── Hinweistext ─────────────────────────────────────────────────────── */
+    .hint { font-size: 0.7rem; color: var(--muted); line-height: 1.65; }
+
+    /* ─── Footer ──────────────────────────────────────────────────────────── */
     footer {
-      font-size: 0.68rem;
+      font-size: 0.65rem;
       color: var(--muted);
       text-align: center;
-      padding: 0.4rem;
+      padding: 0.3rem;
       background: var(--surface);
       border-top: 1px solid var(--border);
       flex-shrink: 0;
@@ -140,47 +220,112 @@
 </head>
 <body>
 
+  <!-- ═══ HEADER ════════════════════════════════════════════════════════════ -->
   <header>
     <h1>Interaktiver Molekül-Viewer</h1>
-    <span class="badge">Benzol C₆H₆</span>
-    <span class="badge">Elektronendichte</span>
-    <span class="badge">Kugel-Stäbchen</span>
+    <span class="badge">Wasser H₂O</span>
+    <span class="badge red">Elektrostatisches Potential</span>
+    <span class="badge grn">Kugel-Stäbchen</span>
   </header>
 
+  <!-- ═══ HAUPTBEREICH ═════════════════════════════════════════════════════ -->
   <div class="main">
+
+    <!-- 3D-Viewer – nimmt den gesamten verbleibenden Platz ein -->
     <div id="viewer-wrap">
       <div id="viewer"></div>
     </div>
 
+    <!-- ═══ SIDEBAR ══════════════════════════════════════════════════════════ -->
     <aside>
-      <!-- Molecule info -->
+
+      <!-- Molekülinformationen -->
       <div class="card">
         <div class="card-title">Molekül</div>
-        <div class="prop"><span class="lbl">Formel</span>   <span class="val">C₆H₆</span></div>
-        <div class="prop"><span class="lbl">Atome</span>    <span class="val">12</span></div>
-        <div class="prop"><span class="lbl">Bindungen</span><span class="val">12</span></div>
-        <div class="prop"><span class="lbl">Symmetrie</span><span class="val">D₆ₕ</span></div>
-        <div class="prop"><span class="lbl">C–C Länge</span><span class="val">1.40 Å</span></div>
+        <div class="prop"><span class="lbl">Formel</span>        <span class="val">H₂O</span></div>
+        <div class="prop"><span class="lbl">Atome</span>         <span class="val">3</span></div>
+        <div class="prop"><span class="lbl">Bindungen</span>     <span class="val">2</span></div>
+        <div class="prop"><span class="lbl">Geometrie</span>     <span class="val">gewinkelt</span></div>
+        <div class="prop"><span class="lbl">H–O–H Winkel</span> <span class="val">104.5°</span></div>
+        <div class="prop"><span class="lbl">O–H Länge</span>     <span class="val">0.96 Å</span></div>
       </div>
 
-      <!-- Colour legend -->
+      <!-- Darstellungsstil – Buttons sind mit JS-Listenern verknüpft -->
+      <div class="card">
+        <div class="card-title">Darstellungsstil</div>
+        <div class="btn-group">
+          <button class="btn aktiv" data-stil="ballstick">⚫ Kugel-Stäbchen</button>
+          <button class="btn"       data-stil="stick">— Nur Stäbchen</button>
+          <button class="btn"       data-stil="sphere">● Nur Kugeln</button>
+          <button class="btn"       data-stil="line">⋯ Drahtmodell</button>
+        </div>
+      </div>
+
+      <!-- ESP-Oberfläche – Toggle und Opazitäts-Slider sind beide funktional -->
+      <div class="card">
+        <div class="card-title">ESP-Oberfläche (VDW)</div>
+        <label class="toggle-row">
+          <span class="toggle-label">Oberfläche anzeigen</span>
+          <label class="toggle">
+            <input type="checkbox" id="esp-toggle" checked />
+            <span class="slider-t rot"></span>
+          </label>
+        </label>
+        <div class="slider-wrap">
+          <div class="slider-row">
+            <span>Opazität</span>
+            <span id="opazitaet-wert">0.70</span>
+          </div>
+          <input type="range" id="opazitaet-slider"
+                 min="0.05" max="1.00" step="0.05" value="0.70" />
+        </div>
+        <div class="esp-skala"></div>
+        <div class="esp-labels">
+          <span>− negativ (O)</span>
+          <span>0</span>
+          <span>+ positiv (H)</span>
+        </div>
+      </div>
+
+      <!-- Elektronendichte-Isoflächen – Toggle ist funktional -->
+      <div class="card">
+        <div class="card-title">Elektronendichte-Isoflächen</div>
+        <label class="toggle-row">
+          <span class="toggle-label">Isoflächen anzeigen</span>
+          <label class="toggle">
+            <input type="checkbox" id="dichte-toggle" />
+            <span class="slider-t grn"></span>
+          </label>
+        </label>
+        <div class="prop" style="margin-top:0.4rem">
+          <span class="lbl">Äußere Fläche η</span><span class="val">0.10</span>
+        </div>
+        <div class="prop">
+          <span class="lbl">Innere Fläche η</span><span class="val">0.55</span>
+        </div>
+        <div class="prop">
+          <span class="lbl">Methode</span><span class="val">Gauß-Σ</span>
+        </div>
+      </div>
+
+      <!-- Atom-Legende -->
       <div class="card">
         <div class="card-title">Legende</div>
         <div class="legend-row">
-          <span class="dot" style="background:#808080"></span>Kohlenstoff (C)
+          <span class="dot" style="background:#e04040"></span>Sauerstoff (O)
         </div>
         <div class="legend-row">
-          <span class="dot" style="background:#e8e8e8;border:1px solid #555"></span>Wasserstoff (H)
+          <span class="dot" style="background:#c8c8c8;border:1px solid #555"></span>Wasserstoff (H)
         </div>
         <div class="legend-row">
-          <span class="dot" style="background:rgba(80,180,255,0.65);border:1px solid #4af"></span>Elektronen&shy;dichte äußere Hülle
+          <span class="dot" style="background:rgba(233,64,64,0.55);border:1px solid #e04040"></span>ESP-Fläche: negativ
         </div>
         <div class="legend-row">
-          <span class="dot" style="background:rgba(255,185,60,0.7);border:1px solid #fb6"></span>Elektronen&shy;dichte innere Schale
+          <span class="dot" style="background:rgba(58,143,234,0.55);border:1px solid #3a8fea"></span>ESP-Fläche: positiv
         </div>
       </div>
 
-      <!-- Controls hint -->
+      <!-- Steuerungshinweise -->
       <div class="card">
         <div class="card-title">Steuerung</div>
         <p class="hint">
@@ -190,98 +335,126 @@
         </p>
       </div>
 
-      <!-- Volume info -->
-      <div class="card">
-        <div class="card-title">Isoflächen</div>
-        <div class="prop"><span class="lbl">Gitter</span>  <span class="val">26×26×18</span></div>
-        <div class="prop"><span class="lbl">Weite η₁</span><span class="val">0.50</span></div>
-        <div class="prop"><span class="lbl">Enge  η₂</span><span class="val">1.60</span></div>
-        <div class="prop"><span class="lbl">Methode</span> <span class="val">Gauß-∑</span></div>
-      </div>
     </aside>
   </div>
 
-  <footer>3Dmol.js · Gaussian-Cube-Elektronendichte (synthetisch) · kein externer Datenzugriff erforderlich</footer>
+  <footer>
+    3Dmol.js · Gauß-Cube ESP aus TIP3P-Partialladungen (synthetisch) · kein externer Datenzugriff erforderlich
+  </footer>
 
+  <!-- ═══ JAVASCRIPT ════════════════════════════════════════════════════════ -->
   <script>
-  // ── 1. Benzol-Molekül (SDF V2000, Koordinaten in Å) ────────────────────────
-  const BENZOL_SDF = `
-     RDKit          3D
+  'use strict';
 
- 12 12  0  0  0  0  0  0  0  0999 V2000
-    1.2124    0.7000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    1.2124   -0.7000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000   -1.4000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-   -1.2124   -0.7000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-   -1.2124    0.7000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    1.4000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    2.1560    1.2450    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0
-    2.1560   -1.2450    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000   -2.4900    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0
-   -2.1560   -1.2450    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0
-   -2.1560    1.2450    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000    2.4900    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0
-  1  2  2  0
-  2  3  1  0
-  3  4  2  0
-  4  5  1  0
-  5  6  2  0
-  6  1  1  0
-  1  7  1  0
-  2  8  1  0
-  3  9  1  0
-  4 10  1  0
-  5 11  1  0
-  6 12  1  0
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  1. MOLEKÜL-DATEN: Wasser (H₂O) im SDF-Format
+  //     Koordinaten in Ångström (Å), experimentelle Geometrie:
+  //       O ist leicht nach oben verschoben (Massenschwerpunkt-Zentrierung),
+  //       H-Atome symmetrisch links/rechts.
+  //       H–O–H Winkel ≈ 104.45°, O–H Länge ≈ 0.9572 Å
+  // ═══════════════════════════════════════════════════════════════════════════
+  const WASSER_SDF = `
+     H2O         3D
+
+  3  2  0  0  0  0  0  0  0  0999 V2000
+    0.0000    0.1173    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+    0.7572   -0.4692    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.7572   -0.4692    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0
+  1  2  1  0
+  1  3  1  0
 M  END
 $$$$`;
 
-  // ── 2. Gaussian-Cube-Volumendaten erzeugen ─────────────────────────────────
-  // Gaussian-Cube-Format arbeitet mit Bohr (1 Å = 1.88973 Bohr)
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  2. VOLUMENDATEN: Hilfsfunktionen für das Gaussian-Cube-Format
+  //
+  //  Das Gaussian-Cube-Format ist ein weit verbreitetes Format für 3D-
+  //  Volumendaten in der Quantenchemie.
+  //  Einheit der Koordinaten: Bohr-Radien (1 Å = 1.88973 Bohr)
+  //
+  //  Aufbau:
+  //    Zeilen 1-2  : Freitext-Kommentare
+  //    Zeile  3    : Anzahl Atome + Ursprung des Gitters (x₀, y₀, z₀)
+  //    Zeilen 4-6  : Gittervektoren (je Anzahl Punkte + Schrittweite)
+  //    Zeilen 7+   : Atome (Kernladung, Partialladung, x, y, z)
+  //    Rest        : Volumendaten (6 Werte pro Zeile)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Umrechnungsfaktor Ångström → Bohr
   const A2B = 1.88972599;
 
-  const ATOMS_BOHR = [
-    { Z: 6, x:  1.2124*A2B, y:  0.7000*A2B, z: 0.0 },
-    { Z: 6, x:  1.2124*A2B, y: -0.7000*A2B, z: 0.0 },
-    { Z: 6, x:  0.0000*A2B, y: -1.4000*A2B, z: 0.0 },
-    { Z: 6, x: -1.2124*A2B, y: -0.7000*A2B, z: 0.0 },
-    { Z: 6, x: -1.2124*A2B, y:  0.7000*A2B, z: 0.0 },
-    { Z: 6, x:  0.0000*A2B, y:  1.4000*A2B, z: 0.0 },
-    { Z: 1, x:  2.1560*A2B, y:  1.2450*A2B, z: 0.0 },
-    { Z: 1, x:  2.1560*A2B, y: -1.2450*A2B, z: 0.0 },
-    { Z: 1, x:  0.0000*A2B, y: -2.4900*A2B, z: 0.0 },
-    { Z: 1, x: -2.1560*A2B, y: -1.2450*A2B, z: 0.0 },
-    { Z: 1, x: -2.1560*A2B, y:  1.2450*A2B, z: 0.0 },
-    { Z: 1, x:  0.0000*A2B, y:  2.4900*A2B, z: 0.0 },
+  // Wasser-Atome mit Positionen in Bohr und TIP3P-Partialladungen.
+  // TIP3P ist ein klassisches Wassermodell, das häufig in Simulationen genutzt wird.
+  // Die Partialladungen q spiegeln die Elektronegativität wider:
+  //   Sauerstoff (q = −0.834): zieht Elektronen stark an → elektronenreich
+  //   Wasserstoff (q = +0.417): gibt Elektronen ab → elektroarm
+  const ATOME_BOHR = [
+    { Z: 8, q: -0.834, x:  0.0000 * A2B, y:  0.1173 * A2B, z: 0.0 }, // Sauerstoff
+    { Z: 1, q:  0.417, x:  0.7572 * A2B, y: -0.4692 * A2B, z: 0.0 }, // Wasserstoff 1
+    { Z: 1, q:  0.417, x: -0.7572 * A2B, y: -0.4692 * A2B, z: 0.0 }, // Wasserstoff 2
   ];
 
-  // Gitter-Parameter (Bohr)
-  const NX = 26, NY = 26, NZ = 18;
-  const XMIN = -6.5, YMIN = -6.5, ZMIN = -4.0;
-  const XMAX =  6.5, YMAX =  6.5, ZMAX =  4.0;
+  // Gitter: ±4.5 Å in x/y, ±3.0 Å in z – ausreichend groß für das ESP-Fernfeld
+  const NX = 22, NY = 22, NZ = 16;
+  const XMIN = -4.5 * A2B, XMAX = 4.5 * A2B;
+  const YMIN = -4.5 * A2B, YMAX = 4.5 * A2B;
+  const ZMIN = -3.0 * A2B, ZMAX = 3.0 * A2B;
   const DX = (XMAX - XMIN) / (NX - 1);
   const DY = (YMAX - YMIN) / (NY - 1);
   const DZ = (ZMAX - ZMIN) / (NZ - 1);
 
-  function buildGaussianCube() {
-    const N = ATOMS_BOHR.length;
-    const lines = [];
+  // Zahl mit 6 Dezimalstellen formatieren (für Cube-Textformat nötig)
+  function fmt(n) { return n.toFixed(6); }
 
-    // Header
-    lines.push('Benzol Elektronendichte (synthetisch, Gausssumme)');
-    lines.push('Generiert durch JavaScript – kein externer Dateiaufruf');
-    lines.push(`${N} ${fmt(XMIN)} ${fmt(YMIN)} ${fmt(ZMIN)}`);
-    lines.push(`${NX} ${fmt(DX)} 0.000000 0.000000`);
-    lines.push(`${NY} 0.000000 ${fmt(DY)} 0.000000`);
-    lines.push(`${NZ} 0.000000 0.000000 ${fmt(DZ)}`);
-
-    // Atom-Zeilen
-    for (const a of ATOMS_BOHR) {
-      lines.push(`${a.Z} 0.000000 ${fmt(a.x)} ${fmt(a.y)} ${fmt(a.z)}`);
+  // Gemeinsamer Header + Atom-Block für beide Cube-Dateien
+  function cubeHeader(kommentar) {
+    const N = ATOME_BOHR.length;
+    const z = [
+      kommentar,
+      'Generiert durch JavaScript – kein externer Datei-Zugriff',
+      `${N} ${fmt(XMIN)} ${fmt(YMIN)} ${fmt(ZMIN)}`,
+      `${NX} ${fmt(DX)} 0.000000 0.000000`,
+      `${NY} 0.000000 ${fmt(DY)} 0.000000`,
+      `${NZ} 0.000000 0.000000 ${fmt(DZ)}`,
+    ];
+    // Jede Atom-Zeile: Kernladungszahl, Partialladung, x, y, z
+    for (const a of ATOME_BOHR) {
+      z.push(`${a.Z} 0.000000 ${fmt(a.x)} ${fmt(a.y)} ${fmt(a.z)}`);
     }
+    return z;
+  }
 
-    // Volumendaten: Summe gewichteter Gauß-Funktionen pro Gitterpunkt
-    const vals = new Float64Array(NX * NY * NZ);
+  // Float64Array von Volumenwerten → Gaussian-Cube-Textzeilen (6 Werte/Zeile)
+  function volumenZuText(werte) {
+    const zeilen = [];
+    for (let i = 0; i < werte.length; i += 6) {
+      const zeile = [];
+      for (let j = i; j < Math.min(i + 6, werte.length); j++) {
+        zeile.push(werte[j].toExponential(5).padStart(13));
+      }
+      zeilen.push(zeile.join(''));
+    }
+    return zeilen;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  3. ELEKTROSTATISCHES POTENTIAL (ESP-Cube)
+  //
+  //  Statt des echten Coulomb-Potentials (1/r, singulär an Atomkernen)
+  //  verwenden wir eine Gauß-geglättete Näherung:
+  //
+  //    ESP(r) = Σᵢ  qᵢ · exp(−α · |r − rᵢ|²)
+  //
+  //  α = 0.70 (Bohr⁻²) liefert ein visuell gut lesbares Ergebnis:
+  //    • Nahe O (qₒ = −0.834): stark negativ → roter Bereich der Oberfläche
+  //    • Nahe H (qₕ = +0.417): leicht positiv → blauer Bereich
+  //    • Fernfeld: → 0                        → weißer Übergangsbereich
+  //
+  //  Diese Verteilung erklärt, warum Wasser ein polar-gewinkeltes Molekül
+  //  mit einem negativen Dipol-Ende (O) und zwei positiven Enden (H) ist.
+  // ═══════════════════════════════════════════════════════════════════════════
+  function buildESPKubus() {
+    const werte = new Float64Array(NX * NY * NZ);
     let idx = 0;
     for (let ix = 0; ix < NX; ix++) {
       const cx = XMIN + ix * DX;
@@ -289,74 +462,233 @@ $$$$`;
         const cy = YMIN + iy * DY;
         for (let iz = 0; iz < NZ; iz++) {
           const cz = ZMIN + iz * DZ;
-          let d = 0;
-          for (const a of ATOMS_BOHR) {
+          let esp = 0;
+          for (const a of ATOME_BOHR) {
             const r2 = (cx - a.x) ** 2 + (cy - a.y) ** 2 + (cz - a.z) ** 2;
-            // α_C = 0.80, α_H = 0.50  →  stärkere Konzentration bei C
-            const alpha = a.Z === 6 ? 0.80 : 0.50;
-            d += a.Z * Math.exp(-alpha * r2);
+            esp += a.q * Math.exp(-0.7 * r2); // Gauß-Glättung mit α = 0.70
           }
-          vals[idx++] = d;
+          werte[idx++] = esp;
         }
       }
     }
-
-    // Datenzeilen (6 Werte/Zeile, rechtsbündig 13 Zeichen)
-    for (let i = 0; i < vals.length; i += 6) {
-      const row = [];
-      for (let j = i; j < Math.min(i + 6, vals.length); j++) {
-        row.push(vals[j].toExponential(5).padStart(13));
-      }
-      lines.push(row.join(''));
-    }
-
-    return lines.join('\n');
+    return [...cubeHeader('Wasser ESP – elektrostatisches Potential (Gauß-Näherung)'),
+            ...volumenZuText(werte)].join('\n');
   }
 
-  function fmt(n) { return n.toFixed(6); }
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  4. ELEKTRONENDICHTE (Dichte-Cube)
+  //
+  //  Vereinfachte Elektronendichte als Summe gewichteter Gauß-Funktionen:
+  //
+  //    ρ(r) = Σᵢ  Zᵢ · exp(−αᵢ · |r − rᵢ|²)
+  //
+  //  Zᵢ = Kernladungszahl (O: Z=8 dominiert das Bild, H: Z=1 kleiner Beitrag)
+  //  Die Isowert-Schnitte zeigen:
+  //    ρ = 0.10 → äußere, diffuse Elektronenhülle (blau, fast transparent)
+  //    ρ = 0.55 → innerer, dichter Kernbereich (amber, halbtransparent)
+  // ═══════════════════════════════════════════════════════════════════════════
+  function buildDichteKubus() {
+    const werte = new Float64Array(NX * NY * NZ);
+    let idx = 0;
+    for (let ix = 0; ix < NX; ix++) {
+      const cx = XMIN + ix * DX;
+      for (let iy = 0; iy < NY; iy++) {
+        const cy = YMIN + iy * DY;
+        for (let iz = 0; iz < NZ; iz++) {
+          const cz = ZMIN + iz * DZ;
+          let rho = 0;
+          for (const a of ATOME_BOHR) {
+            const r2 = (cx - a.x) ** 2 + (cy - a.y) ** 2 + (cz - a.z) ** 2;
+            // α_O = 0.80 (kompakter Kern), α_H = 0.45 (diffuse Hülle)
+            const alpha = a.Z === 8 ? 0.80 : 0.45;
+            rho += a.Z * Math.exp(-alpha * r2);
+          }
+          werte[idx++] = rho;
+        }
+      }
+    }
+    return [...cubeHeader('Wasser Elektronendichte (Gauß-Näherung)'),
+            ...volumenZuText(werte)].join('\n');
+  }
 
-  // ── 3. Viewer aufsetzen ────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  5. VIEWER INITIALISIEREN
+  // ═══════════════════════════════════════════════════════════════════════════
+  // $3Dmol.createViewer() erzeugt eine WebGL-Canvas im angegebenen Container.
   const viewer = $3Dmol.createViewer('viewer', {
-    backgroundColor: '#080d14',
+    backgroundColor: '#080d14', // fast schwarzer Hintergrund
   });
 
-  // Molekül hinzufügen
-  viewer.addModel(BENZOL_SDF, 'sdf');
+  // Das Wasser-Molekül aus dem SDF-String laden.
+  // 3Dmol.js erkennt Bindungen und Elementtypen automatisch aus dem Format.
+  const mol = viewer.addModel(WASSER_SDF, 'sdf');
 
-  // Kugel-Stäbchen-Modell (Jmol-Farbschema: C=grau, H=weiß, …)
-  viewer.setStyle({}, {
-    stick:  { radius: 0.13, colorscheme: 'Jmol' },
-    sphere: { scale:  0.30, colorscheme: 'Jmol' },
-  });
+  // Volumendaten einlesen – $3Dmol.VolumeData parst das Gaussian-Cube-Format
+  const espVolDaten    = new $3Dmol.VolumeData(buildESPKubus(),    'cube');
+  const dichteVolDaten = new $3Dmol.VolumeData(buildDichteKubus(), 'cube');
 
-  // Gaussian-Cube generieren und laden
-  console.time('cube-gen');
-  const cubeStr = buildGaussianCube();
-  console.timeEnd('cube-gen');
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  6. ZUSTANDSVARIABLEN DER UI
+  //     Diese Variablen spiegeln immer den aktuellen Anzeigemodus wider.
+  //     Jede Änderung durch einen Event-Listener aktualisiert sie.
+  // ═══════════════════════════════════════════════════════════════════════════
+  let stilModus      = 'ballstick'; // aktiver Darstellungsstil (Button-Auswahl)
+  let espSichtbar    = true;        // ESP-Oberfläche sichtbar?
+  let dichteSichtbar = false;       // Elektronendichte-Isoflächen sichtbar?
+  let opazitaet      = 0.70;        // Opazität der ESP-Oberfläche (0.05 – 1.00)
 
-  const volData = new $3Dmol.VolumeData(cubeStr, 'cube');
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  7. DARSTELLUNGSSTIL ANWENDEN
+  //     viewer.setStyle(selektor, stilObjekt) setzt den Render-Stil.
+  //     Mit leerem Selektor {} werden alle Atome des Modells erfasst.
+  //     'Jmol' ist das Standardfarbschema: O=rot, H=weiß, ...
+  // ═══════════════════════════════════════════════════════════════════════════
+  function stilAnwenden() {
+    switch (stilModus) {
+      case 'ballstick':
+        // Kugel-Stäbchen: Kugeln zeigen Elementtyp, Stäbchen die Bindungen
+        viewer.setStyle({}, {
+          stick:  { radius: 0.15, colorscheme: 'Jmol' },
+          sphere: { scale:  0.35, colorscheme: 'Jmol' },
+        });
+        break;
+      case 'stick':
+        // Nur Stäbchen: betont Bindungswinkel und -längen
+        viewer.setStyle({}, {
+          stick: { radius: 0.18, colorscheme: 'Jmol' },
+        });
+        break;
+      case 'sphere':
+        // Van-der-Waals-Kugeln: zeigt die realen Atomgrößenverhältnisse
+        viewer.setStyle({}, {
+          sphere: { scale: 0.5, colorscheme: 'Jmol' },
+        });
+        break;
+      case 'line':
+        // Drahtmodell: sehr minimal, gut für komplexere Moleküle
+        viewer.setStyle({}, {
+          line: { linewidth: 3, colorscheme: 'Jmol' },
+        });
+        break;
+    }
+  }
 
-  // Äußere Isofläche – diffuse Elektronenwolke (blau, sehr transparent)
-  viewer.addIsosurface(volData, {
-    isoval:     0.50,
-    color:      '#58a6ff',
-    opacity:    0.18,
-    smoothness: 10,
-    wireframe:  false,
-  });
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  8. OBERFLÄCHEN AKTUALISIEREN
+  //     3Dmol.js hat keine „show/hide"-Funktion für Oberflächen.
+  //     Deshalb: alle Flächen entfernen, dann aktive neu aufbauen.
+  //     Das dauert ca. 50-150 ms und ist für den Nutzer kaum spürbar.
+  // ═══════════════════════════════════════════════════════════════════════════
+  function oberflaechenAktualisieren() {
+    // Alle vorhandenen Flächen aus dem Viewer entfernen
+    viewer.removeAllSurfaces();
 
-  // Innere Isofläche – dichter Kernbereich (amber, halbtransparent)
-  viewer.addIsosurface(volData, {
-    isoval:     1.60,
-    color:      '#ffb83f',
-    opacity:    0.42,
-    smoothness: 7,
-    wireframe:  false,
-  });
+    // ── ESP-VDW-Oberfläche ────────────────────────────────────────────────
+    // addSurface(typ, stilOptionen) erzeugt eine Moleküloberfläche.
+    // SurfaceType.VDW = Van-der-Waals-Oberfläche (gebräuchlichste Form).
+    //
+    // voldata : VolumeData-Objekt, das pro Gitterpunkt einen Wert speichert.
+    //           3Dmol.js interpoliert den ESP-Wert auf jeden Oberflächen-Punkt.
+    // volscheme: Farbverlauf, der Werte auf Farben abbildet.
+    //   RWB(min, max): Red–White–Blue
+    //     min-Wert → Rot  (negatives ESP = Sauerstoff-Seite)
+    //     ~0-Wert  → Weiß (neutrales Übergangsgebiet)
+    //     max-Wert → Blau (positives ESP = Wasserstoff-Seite)
+    if (espSichtbar) {
+      viewer.addSurface(
+        $3Dmol.SurfaceType.VDW,
+        {
+          opacity:   opazitaet,
+          voldata:   espVolDaten,
+          volscheme: new $3Dmol.Gradient.RWB(-0.40, 0.20),
+        }
+      );
+    }
 
-  viewer.zoomTo();
-  viewer.zoom(0.82);
+    // ── Elektronendichte-Isoflächen ───────────────────────────────────────
+    // addIsosurface(volData, optionen) schneidet das Volumen bei einem
+    // festen Schwellwert (isoval) und erzeugt die Grenzfläche.
+    if (dichteSichtbar) {
+      // Äußere Hülle: diffuses, großes Gebiet (blau, fast transparent)
+      viewer.addIsosurface(dichteVolDaten, {
+        isoval:     0.10,
+        color:      '#58a6ff',
+        opacity:    0.18,
+        smoothness: 8,
+        wireframe:  false,
+      });
+      // Innerer Kern: dichtester Bereich nahe den Atomkernen (amber, halbdeckend)
+      viewer.addIsosurface(dichteVolDaten, {
+        isoval:     0.55,
+        color:      '#e3b341',
+        opacity:    0.45,
+        smoothness: 6,
+        wireframe:  false,
+      });
+    }
+
+    viewer.render();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  9. ERSTMALIGE DARSTELLUNG beim Laden der Seite
+  // ═══════════════════════════════════════════════════════════════════════════
+  stilAnwenden();
+  oberflaechenAktualisieren();
+  viewer.zoomTo();   // Kameraausschnitt automatisch auf das Molekül anpassen
+  viewer.zoom(1.1);  // Leicht reinzoomen für bessere Sichtbarkeit des kleinen Moleküls
   viewer.render();
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  10. EVENT LISTENER – Verbindung zwischen HTML-Steuerelementen und Viewer
+  //
+  //  Hier wird jeder Button und jeder Toggle mit einer JavaScript-Funktion
+  //  verknüpft. Ohne diese Listener hätten die UI-Elemente keine Wirkung.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── Darstellungsstil-Buttons ──────────────────────────────────────────────
+  // querySelectorAll('[data-stil]') findet alle Buttons mit einem data-stil-Attribut.
+  // Beim Klick: alten Aktiv-Zustand entfernen, neuen setzen, Stil anwenden.
+  document.querySelectorAll('[data-stil]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Alle Stil-Buttons: aktive Hervorhebung entfernen
+      document.querySelectorAll('[data-stil]').forEach(b => b.classList.remove('aktiv'));
+      // Nur der angeklickte Button wird als aktiv markiert
+      btn.classList.add('aktiv');
+      // Stil-Modus aus HTML-data-Attribut auslesen und in den Viewer übertragen
+      stilModus = btn.dataset.stil;
+      stilAnwenden();
+      viewer.render();
+    });
+  });
+
+  // ── ESP-Oberfläche: Toggle-Schalter ──────────────────────────────────────
+  // 'change'-Event feuert, wenn die Checkbox ihren Zustand ändert.
+  // e.target.checked liefert true (eingeschaltet) oder false (ausgeschaltet).
+  document.getElementById('esp-toggle').addEventListener('change', e => {
+    espSichtbar = e.target.checked;
+    oberflaechenAktualisieren(); // Alle Oberflächen neu aufbauen
+  });
+
+  // ── Elektronendichte: Toggle-Schalter ────────────────────────────────────
+  document.getElementById('dichte-toggle').addEventListener('change', e => {
+    dichteSichtbar = e.target.checked;
+    oberflaechenAktualisieren();
+  });
+
+  // ── Opazitäts-Schieberegler ───────────────────────────────────────────────
+  // 'input' feuert sofort bei jeder Slider-Bewegung (nicht erst beim Loslassen).
+  // Der angezeigte Zahlenwert und die Oberflächen-Opazität werden live aktualisiert.
+  document.getElementById('opazitaet-slider').addEventListener('input', e => {
+    opazitaet = parseFloat(e.target.value);
+    // Zahlenwert in der Sidebar live aktualisieren
+    document.getElementById('opazitaet-wert').textContent = opazitaet.toFixed(2);
+    // Nur neu rendern wenn die Oberfläche gerade sichtbar ist
+    if (espSichtbar) {
+      oberflaechenAktualisieren();
+    }
+  });
+
   </script>
 </body>
 </html>
